@@ -44,8 +44,10 @@ class AndroidEventMonitor:
         self.record_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.record_dir = "records"
         self.screenshots_dir = os.path.join(self.record_dir, f"record_{self.record_timestamp}", "screenshots")
+        self.ui_trees_dir = os.path.join(self.record_dir, f"record_{self.record_timestamp}", "ui_trees")  # 新增UI树目录
         # 确保记录目录存在
         os.makedirs(self.screenshots_dir, exist_ok=True)
+        os.makedirs(self.ui_trees_dir, exist_ok=True)  # 创建UI树目录
 
         self.gui = None  # 添加GUI引用
         self.path_target = None  # 添加路径目标变量
@@ -117,7 +119,7 @@ class AndroidEventMonitor:
                             "action_detail": {
                                 "event": self.current_key
                             },
-                            "screen_shot": screenshot_name
+                            "screen_shot": f"screenshots/{screenshot_name}"
                         })
                         
                         self.take_screenshot(os.path.join(self.screenshots_dir, f"step_{self.step_id}"))
@@ -258,7 +260,7 @@ class AndroidEventMonitor:
 
     def _record_step(self, step_data):
         """记录单个步骤"""
-        if not self.recording_enabled:  # 如果未启用记录，直接返回
+        if not self.recording_enabled:
             return
             
         # 等待1秒，确保页面跳转完成
@@ -268,6 +270,18 @@ class AndroidEventMonitor:
         activity_info = self.get_current_activity()
         if activity_info:
             step_data["activity_info"] = activity_info
+            
+        # 获取UI层次结构
+        ui_tree = self.get_ui_hierarchy()
+        if ui_tree:
+            # 保存UI树到文件
+            ui_tree_filename = f"step_{step_data['step_id']}_ui.xml"
+            ui_tree_path = os.path.join(self.ui_trees_dir, ui_tree_filename)
+            with open(ui_tree_path, 'w', encoding='utf-8') as f:
+                f.write(ui_tree)
+            # 在记录中只保存相对路径
+            step_data["ui_tree"] = f"ui_trees/{ui_tree_filename}"
+            
         self.actions.append(step_data)
         self._save_actions()
         
@@ -328,6 +342,32 @@ class AndroidEventMonitor:
         except:
             return None
 
+    def get_ui_hierarchy(self):
+        """获取当前界面的UI层次结构"""
+        try:
+            # 导出UI层次结构到设备
+            dump_cmd = f"adb {self.device_id} shell uiautomator dump"
+            subprocess.run(dump_cmd, shell=True, check=True)
+            
+            # 创建临时文件名
+            temp_xml = os.path.join(self.screenshots_dir, "temp_ui_dump.xml")
+            
+            # 从设备拉取文件
+            pull_cmd = f"adb {self.device_id} pull /sdcard/window_dump.xml \"{temp_xml}\""
+            subprocess.run(pull_cmd, shell=True, check=True)
+            
+            # 读取XML内容
+            if os.path.exists(temp_xml):
+                with open(temp_xml, 'r', encoding='utf-8') as f:
+                    ui_tree = f.read()
+                # 删除临时文件
+                os.remove(temp_xml)
+                return ui_tree
+            return None
+        except Exception as e:
+            print(f"Error getting UI hierarchy: {e}")
+            return None
+
     def set_path_target(self, target):
         """设置路径目标"""
         self.path_target = target
@@ -338,14 +378,26 @@ class AndroidEventMonitor:
             f"record_{self.record_timestamp}",
             "screenshots"
         )
+        self.ui_trees_dir = os.path.join(
+            self.record_dir,
+            f"record_{self.record_timestamp}",
+            "ui_trees"
+        )
         os.makedirs(self.screenshots_dir, exist_ok=True)
+        os.makedirs(self.ui_trees_dir, exist_ok=True)
         
         # 初始化记录
         self.actions = []
         self.step_id = 0
         
-        # 先截取初始页面
+        # 先截取初始页面和UI层次结构
         self.take_screenshot(os.path.join(self.screenshots_dir, "step_0"))
+        initial_ui = self.get_ui_hierarchy()
+        if initial_ui:
+            # 保存初始UI层次结构
+            ui_file = os.path.join(self.ui_trees_dir, "step_0_ui.xml")
+            with open(ui_file, 'w', encoding='utf-8') as f:
+                f.write(initial_ui)
         
         # 启用记录并保存初始json
         self.recording_enabled = True
