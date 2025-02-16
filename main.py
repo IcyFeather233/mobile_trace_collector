@@ -455,7 +455,10 @@ class AndroidEventMonitor:
         """保存所有动作到JSON文件"""
         record_data = {
             "target": self.path_target,
-            # "timestamp": self.record_timestamp,
+            "screen_size": {
+                "width": self.screen_width,
+                "height": self.screen_height
+            },
             "steps": self.actions
         }
         
@@ -482,13 +485,16 @@ class AndroidEventMonitor:
                 if os.path.exists(final_file):
                     os.remove(final_file)
                 os.rename(temp_file, final_file)
+                return True  # 返回成功标志
             else:
                 print(f"Screenshot failed: {temp_file} not created or empty")
+                return False
         except Exception as e:
             print(f"Error taking screenshot: {e}")
             # 清理可能的临时文件
             if os.path.exists(temp_file):
                 os.remove(temp_file)
+            return False
 
     def get_current_activity(self):
         """获取当前Activity信息"""

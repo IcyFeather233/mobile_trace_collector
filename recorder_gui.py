@@ -56,13 +56,17 @@ class RecorderGUI:
         self.delete_button = ttk.Button(self.button_frame, text="删除上一步", command=self.delete_last_step, width=20)
         self.delete_button.grid(row=0, column=0, padx=20)
         
+        # 重新截图按钮
+        self.retake_button = ttk.Button(self.button_frame, text="重新截图", command=self.retake_screenshot, width=20)
+        self.retake_button.grid(row=0, column=1, padx=20)
+        
         # 结束输入按钮
         self.finish_input_button = ttk.Button(self.button_frame, text="结束输入并记录", command=self.finish_input, width=20)
-        self.finish_input_button.grid(row=0, column=1, padx=20)
+        self.finish_input_button.grid(row=0, column=2, padx=20)
         
         # 结束当前路径按钮
         self.finish_button = ttk.Button(self.button_frame, text="结束当前路径", command=self.finish_current_path, width=20)
-        self.finish_button.grid(row=0, column=2, padx=20)
+        self.finish_button.grid(row=0, column=3, padx=20)
         
         # 初始化变量
         self.current_record = None
@@ -72,6 +76,7 @@ class RecorderGUI:
         self.delete_button.config(state='disabled')
         self.finish_button.config(state='disabled')
         self.finish_input_button.config(state='disabled')
+        self.retake_button.config(state='disabled')
     
     def set_monitor(self, monitor):
         """设置监视器实例"""
@@ -164,6 +169,7 @@ class RecorderGUI:
             self.delete_button.config(state='normal')
             self.finish_button.config(state='normal')
             self.finish_input_button.config(state='normal')
+            self.retake_button.config(state='normal')
     
     def finish_current_path(self):
         """结束当前路径记录"""
@@ -202,6 +208,7 @@ class RecorderGUI:
             self.delete_button.config(state='disabled')
             self.finish_button.config(state='disabled')
             self.finish_input_button.config(state='disabled')
+            self.retake_button.config(state='disabled')
 
     def update_initial_screenshot(self, image_path):
         """更新初始页面截图"""
@@ -215,4 +222,30 @@ class RecorderGUI:
     def finish_input(self):
         """手动结束当前输入并记录"""
         if self.monitor:
-            self.monitor.finish_current_input() 
+            self.monitor.finish_current_input()
+
+    def retake_screenshot(self):
+        """重新截取当前步骤的截图"""
+        if self.monitor and self.monitor.actions:
+            current_step = self.monitor.actions[-1]
+            step_id = current_step['step_id']
+            
+            # 重新截图
+            screenshot_success = self.monitor.take_screenshot(os.path.join(self.monitor.screenshots_dir, f"step_{step_id}"))
+            
+            if screenshot_success:
+                # 如果需要处理截图（对于非初始步骤）
+                if step_id > 0:
+                    # 获取上一步的截图
+                    prev_screenshot = os.path.join(self.monitor.screenshots_dir, f"step_{step_id-1}.png")
+                    if os.path.exists(prev_screenshot):
+                        # 基于上一步的截图重新生成processed截图
+                        processed_path = self.monitor.process_screenshot(prev_screenshot, current_step)
+                        if processed_path:
+                            current_step["processed_screenshot"] = processed_path.replace("processed_screenshots/", "")
+                
+                # 保存更新后的记录
+                self.monitor._save_actions()
+                
+                # 更新显示
+                self.update_last_action(current_step) 
