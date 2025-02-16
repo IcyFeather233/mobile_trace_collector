@@ -12,53 +12,53 @@ class RecorderGUI:
         self.root.title("Android操作记录器")
         
         # 设置窗口大小和位置
-        self.root.geometry("800x600")
+        self.root.geometry("1000x1000")  # 调整为更大的尺寸
         
         # 添加定期更新的功能
         self.pending_screenshot = None
         self.root.after(100, self.check_pending_updates)
         
         # 创建主框架
-        self.main_frame = ttk.Frame(self.root, padding="10")
+        self.main_frame = ttk.Frame(self.root, padding="20")  # 增加内边距
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # 路径目标输入框
-        self.target_frame = ttk.LabelFrame(self.main_frame, text="路径目标", padding="5")
-        self.target_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        self.target_frame = ttk.LabelFrame(self.main_frame, text="路径目标", padding="10")
+        self.target_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
         
-        self.target_entry = ttk.Entry(self.target_frame, width=50)
-        self.target_entry.grid(row=0, column=0, padx=5, pady=5)
+        self.target_entry = ttk.Entry(self.target_frame, width=80)  # 加宽输入框
+        self.target_entry.grid(row=0, column=0, padx=10, pady=10)
         
         self.target_button = ttk.Button(self.target_frame, text="设置目标", command=self.set_target)
-        self.target_button.grid(row=0, column=1, padx=5, pady=5)
+        self.target_button.grid(row=0, column=1, padx=10, pady=10)
         
         # 当前步骤显示
-        self.step_label = ttk.Label(self.main_frame, text="当前步骤: 0")
-        self.step_label.grid(row=1, column=0, columnspan=2, pady=5)
+        self.step_label = ttk.Label(self.main_frame, text="当前步骤: 0", font=('Arial', 12))  # 增大字体
+        self.step_label.grid(row=1, column=0, columnspan=2, pady=10)
         
         # 上一步操作信息
-        self.last_action_frame = ttk.LabelFrame(self.main_frame, text="上一步操作", padding="5")
-        self.last_action_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        self.last_action_frame = ttk.LabelFrame(self.main_frame, text="上一步操作", padding="10")
+        self.last_action_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
         
-        self.last_action_text = tk.Text(self.last_action_frame, height=5, width=60)
-        self.last_action_text.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        self.last_action_text = tk.Text(self.last_action_frame, height=8, width=80)  # 增加高度和宽度
+        self.last_action_text.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=10, pady=10)
         self.last_action_text.config(state='disabled')
         
         # 截图显示
         self.screenshot_label = ttk.Label(self.main_frame)
-        self.screenshot_label.grid(row=3, column=0, columnspan=2, pady=5)
+        self.screenshot_label.grid(row=3, column=0, columnspan=2, pady=20)
         
         # 按钮框架
         self.button_frame = ttk.Frame(self.main_frame)
-        self.button_frame.grid(row=4, column=0, columnspan=2, pady=10)
+        self.button_frame.grid(row=4, column=0, columnspan=2, pady=20)
         
         # 删除上一步按钮
-        self.delete_button = ttk.Button(self.button_frame, text="删除上一步", command=self.delete_last_step)
-        self.delete_button.grid(row=0, column=0, padx=5)
+        self.delete_button = ttk.Button(self.button_frame, text="删除上一步", command=self.delete_last_step, width=20)  # 加宽按钮
+        self.delete_button.grid(row=0, column=0, padx=20)
         
         # 结束当前路径按钮
-        self.finish_button = ttk.Button(self.button_frame, text="结束当前路径", command=self.finish_current_path)
-        self.finish_button.grid(row=0, column=1, padx=5)
+        self.finish_button = ttk.Button(self.button_frame, text="结束当前路径", command=self.finish_current_path, width=20)  # 加宽按钮
+        self.finish_button.grid(row=0, column=1, padx=20)
         
         # 初始化变量
         self.current_record = None
