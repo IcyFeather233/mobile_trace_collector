@@ -578,6 +578,12 @@ class AndroidEventMonitor:
         self.recording_enabled = False  # 禁用记录
         self._save_actions()
 
+    def finish_current_input(self):
+        """手动结束当前输入并记录"""
+        if self.pending_keys:
+            self._output_pending_keys()
+            print_with_timestamp("[manual] Finish input")
+
 if __name__ == "__main__":
     root = tk.Tk()
     gui = RecorderGUI(root)

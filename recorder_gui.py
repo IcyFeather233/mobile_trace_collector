@@ -53,12 +53,16 @@ class RecorderGUI:
         self.button_frame.grid(row=4, column=0, columnspan=2, pady=20)
         
         # 删除上一步按钮
-        self.delete_button = ttk.Button(self.button_frame, text="删除上一步", command=self.delete_last_step, width=20)  # 加宽按钮
+        self.delete_button = ttk.Button(self.button_frame, text="删除上一步", command=self.delete_last_step, width=20)
         self.delete_button.grid(row=0, column=0, padx=20)
         
+        # 结束输入按钮
+        self.finish_input_button = ttk.Button(self.button_frame, text="结束输入并记录", command=self.finish_input, width=20)
+        self.finish_input_button.grid(row=0, column=1, padx=20)
+        
         # 结束当前路径按钮
-        self.finish_button = ttk.Button(self.button_frame, text="结束当前路径", command=self.finish_current_path, width=20)  # 加宽按钮
-        self.finish_button.grid(row=0, column=1, padx=20)
+        self.finish_button = ttk.Button(self.button_frame, text="结束当前路径", command=self.finish_current_path, width=20)
+        self.finish_button.grid(row=0, column=2, padx=20)
         
         # 初始化变量
         self.current_record = None
@@ -67,6 +71,7 @@ class RecorderGUI:
         # 禁用其他按钮，直到设置了目标
         self.delete_button.config(state='disabled')
         self.finish_button.config(state='disabled')
+        self.finish_input_button.config(state='disabled')
     
     def set_monitor(self, monitor):
         """设置监视器实例"""
@@ -86,16 +91,24 @@ class RecorderGUI:
         
         # 设置待更新的截图路径
         if action_data and 'screen_shot' in action_data:
-            self.pending_screenshot = os.path.join(
-                self.monitor.record_dir,
-                f"record_{self.monitor.record_timestamp}",
-                "screenshots",
-                action_data['screen_shot']
-            )
+            if "screenshots" in action_data['screen_shot']:
+                self.pending_screenshot = os.path.join(
+                    self.monitor.record_dir,
+                    f"record_{self.monitor.record_timestamp}",
+                    action_data['screen_shot']
+                )
+            else:
+                self.pending_screenshot = os.path.join(
+                    self.monitor.record_dir,
+                    f"record_{self.monitor.record_timestamp}",
+                    "screenshots",
+                    action_data['screen_shot']
+                )
 
     def check_pending_updates(self):
         """定期检查是否有待更新的截图"""
         if self.pending_screenshot:
+            print(self.pending_screenshot)
             if os.path.exists(self.pending_screenshot):
                 try:
                     image = Image.open(self.pending_screenshot)
@@ -150,6 +163,7 @@ class RecorderGUI:
             self.target_button.config(state='disabled')
             self.delete_button.config(state='normal')
             self.finish_button.config(state='normal')
+            self.finish_input_button.config(state='normal')
     
     def finish_current_path(self):
         """结束当前路径记录"""
@@ -187,6 +201,7 @@ class RecorderGUI:
             # 禁用操作按钮
             self.delete_button.config(state='disabled')
             self.finish_button.config(state='disabled')
+            self.finish_input_button.config(state='disabled')
 
     def update_initial_screenshot(self, image_path):
         """更新初始页面截图"""
@@ -195,4 +210,9 @@ class RecorderGUI:
         self.last_action_text.config(state='normal')
         self.last_action_text.delete(1.0, tk.END)
         self.last_action_text.insert(1.0, "初始页面")
-        self.last_action_text.config(state='disabled') 
+        self.last_action_text.config(state='disabled')
+
+    def finish_input(self):
+        """手动结束当前输入并记录"""
+        if self.monitor:
+            self.monitor.finish_current_input() 
