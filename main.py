@@ -7,6 +7,8 @@ import os
 import re
 import tkinter as tk
 from recorder_gui import RecorderGUI
+from PIL import Image, ImageDraw, ImageFont
+import math
 
 def print_with_timestamp(message):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
@@ -41,13 +43,11 @@ class AndroidEventMonitor:
         # 修改动作记录相关的成员变量
         self.actions = []
         self.step_id = 0
-        self.record_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.record_timestamp = None  # 初始化为None
         self.record_dir = "records"
-        self.screenshots_dir = os.path.join(self.record_dir, f"record_{self.record_timestamp}", "screenshots")
-        self.ui_trees_dir = os.path.join(self.record_dir, f"record_{self.record_timestamp}", "ui_trees")  # 新增UI树目录
-        # 确保记录目录存在
-        os.makedirs(self.screenshots_dir, exist_ok=True)
-        os.makedirs(self.ui_trees_dir, exist_ok=True)  # 创建UI树目录
+        self.screenshots_dir = None  # 初始化为None
+        self.ui_trees_dir = None  # 初始化为None
+        self.processed_screenshots_dir = None  # 初始化为None
 
         self.gui = None  # 添加GUI引用
         self.path_target = None  # 添加路径目标变量
@@ -113,16 +113,20 @@ class AndroidEventMonitor:
                         self.step_id += 1
                         screenshot_name = f"step_{self.step_id}.png"
                         
+                        # 先截图
+                        self.take_screenshot(os.path.join(self.screenshots_dir, f"step_{self.step_id}"))
+
+                        print(f"这是一个special event，当前的step_id是：{self.step_id}，截图路径是：{screenshot_name}")
+                        
+                        # 再记录步骤
                         self._record_step({
                             "step_id": self.step_id,
                             "action_type": "special_event",
                             "action_detail": {
                                 "event": self.current_key
                             },
-                            "screen_shot": f"screenshots/{screenshot_name}"
+                            "screen_shot": f"{screenshot_name}"
                         })
-                        
-                        self.take_screenshot(os.path.join(self.screenshots_dir, f"step_{self.step_id}"))
                     else:
                         # 普通按键，加入待处理列表
                         self.pending_keys.append(self.current_key)
@@ -246,17 +250,156 @@ class AndroidEventMonitor:
             self.step_id += 1
             screenshot_name = f"step_{self.step_id}.png"
             
+            # 先截图
+            self.take_screenshot(os.path.join(self.screenshots_dir, f"step_{self.step_id}"))
+            
+            # 再记录步骤
             self._record_step({
                 "step_id": self.step_id,
                 "action_type": "input",
                 "action_detail": {
                     "text": keys_str
                 },
-                "screen_shot": screenshot_name
+                "screen_shot": f"screenshots/{screenshot_name}"
             })
             
-            self.take_screenshot(os.path.join(self.screenshots_dir, f"step_{self.step_id}"))
             self.pending_keys = []
+
+    def _parse_bounds(self, bounds_str):
+        """解析bounds字符串为坐标值"""
+        try:
+            # 从形如 "[x1,y1][x2,y2]" 的字符串中提取坐标
+            coords = bounds_str.strip('[]').split('][')
+            x1, y1 = map(int, coords[0].split(','))
+            x2, y2 = map(int, coords[1].split(','))
+            return x1, y1, x2, y2
+        except:
+            return None
+
+    def _calculate_area(self, bounds):
+        """计算bounds的面积"""
+        x1, y1, x2, y2 = bounds
+        return (x2 - x1) * (y2 - y1)
+
+    def _find_smallest_containing_bounds(self, xml_path, x, y):
+        """找到包含指定坐标的最小bounds"""
+        try:
+            if not os.path.exists(xml_path):
+                return None
+                
+            with open(xml_path, 'r', encoding='utf-8') as f:
+                xml_content = f.read()
+            
+            # 找到所有bounds属性
+            bounds_pattern = r'bounds="(\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\])"'
+            matches = re.finditer(bounds_pattern, xml_content)
+            
+            smallest_area = float('inf')
+            smallest_bounds = None
+            
+            # 检查每个bounds
+            for match in matches:
+                bounds_str = match.group(1)
+                bounds = self._parse_bounds(bounds_str)
+                if bounds:
+                    x1, y1, x2, y2 = bounds
+                    # 检查坐标是否在bounds内
+                    if x1 <= x <= x2 and y1 <= y <= y2:
+                        area = self._calculate_area(bounds)
+                        if area < smallest_area:
+                            smallest_area = area
+                            smallest_bounds = bounds_str
+            
+            return smallest_bounds
+        except Exception as e:
+            print(f"Error finding bounds: {e}")
+            return None
+
+    def process_screenshot(self, screenshot_path, step_data):
+        """处理截图，添加操作标记"""
+        try:
+            # 打开原始截图
+            img = Image.open(screenshot_path)
+            draw = ImageDraw.Draw(img)
+            
+            # 设置颜色和字体
+            red_color = (255, 0, 0)
+            blue_color = (0, 0, 255)
+            circle_radius = 10
+            try:
+                font = ImageFont.truetype("arial.ttf", 24)  # Windows字体
+            except:
+                font = ImageFont.load_default()
+            
+            action_type = step_data["action_type"]
+            
+            if action_type in ["click", "press"]:
+                # 绘制操作点和bounds
+                x = step_data["action_detail"]["x"]
+                y = step_data["action_detail"]["y"]
+                
+                # 画蓝色圆点
+                draw.ellipse([x-circle_radius, y-circle_radius, x+circle_radius, y+circle_radius], 
+                           outline=blue_color, width=2)
+                
+                # 如果有bounds，画红色边框
+                if "operated_bounds" in step_data:
+                    bounds = self._parse_bounds(step_data["operated_bounds"])
+                    if bounds:
+                        x1, y1, x2, y2 = bounds
+                        draw.rectangle([x1, y1, x2, y2], outline=red_color, width=2)
+            
+            elif action_type == "swipe":
+                # 绘制滑动起点、终点和箭头
+                start_x = step_data["action_detail"]["start_x"]
+                start_y = step_data["action_detail"]["start_y"]
+                end_x = step_data["action_detail"]["end_x"]
+                end_y = step_data["action_detail"]["end_y"]
+                
+                # 画起点和终点的圆
+                draw.ellipse([start_x-circle_radius, start_y-circle_radius, 
+                            start_x+circle_radius, start_y+circle_radius], 
+                           outline=blue_color, width=2)
+                draw.ellipse([end_x-circle_radius, end_y-circle_radius, 
+                            end_x+circle_radius, end_y+circle_radius], 
+                           outline=blue_color, width=2)
+                
+                # 画箭头
+                draw.line([start_x, start_y, end_x, end_y], fill=blue_color, width=2)
+                # 画箭头头部
+                arrow_length = 20
+                angle = math.atan2(end_y - start_y, end_x - start_x)
+                arrow_angle = math.pi / 6  # 30度
+                draw.line([end_x, end_y,
+                          end_x - arrow_length * math.cos(angle + arrow_angle),
+                          end_y - arrow_length * math.sin(angle + arrow_angle)], 
+                         fill=blue_color, width=2)
+                draw.line([end_x, end_y,
+                          end_x - arrow_length * math.cos(angle - arrow_angle),
+                          end_y - arrow_length * math.sin(angle - arrow_angle)], 
+                         fill=blue_color, width=2)
+            
+            elif action_type == "input":
+                # 在顶部绘制输入文本
+                text = f"Input: {step_data['action_detail']['text']}"
+                draw.text((10, 10), text, fill=red_color, font=font)
+            
+            elif action_type == "special_event":
+                # 在顶部绘制特殊事件
+                text = f"Special Event: {step_data['action_detail']['event']}"
+                draw.text((10, 10), text, fill=red_color, font=font)
+            
+            # 保存处理后的图片
+            processed_filename = f"step_{step_data['step_id']}_processed.png"
+            processed_path = os.path.join(self.processed_screenshots_dir, processed_filename)
+            img.save(processed_path)
+            
+            # 返回相对路径
+            return f"processed_screenshots/{processed_filename}"
+            
+        except Exception as e:
+            print(f"Error processing screenshot: {e}")
+            return None
 
     def _record_step(self, step_data):
         """记录单个步骤"""
@@ -274,13 +417,31 @@ class AndroidEventMonitor:
         # 获取UI层次结构
         ui_tree = self.get_ui_hierarchy()
         if ui_tree:
-            # 保存UI树到文件
             ui_tree_filename = f"step_{step_data['step_id']}_ui.xml"
             ui_tree_path = os.path.join(self.ui_trees_dir, ui_tree_filename)
             with open(ui_tree_path, 'w', encoding='utf-8') as f:
                 f.write(ui_tree)
-            # 在记录中只保存相对路径
-            step_data["ui_tree"] = f"ui_trees/{ui_tree_filename}"
+            step_data["ui_tree"] = f"{ui_tree_filename}"
+            
+            # 对于点击和长按操作，查找对应的bounds
+            if step_data["action_type"] in ["click", "press"]:
+                x = step_data["action_detail"]["x"]
+                y = step_data["action_detail"]["y"]
+                bounds = self._find_smallest_containing_bounds(ui_tree_path, x, y)
+                if bounds:
+                    step_data["operated_bounds"] = bounds
+        
+        # 先处理上一步的截图（如果存在）
+        prev_step_id = step_data['step_id'] - 1
+        if prev_step_id >= 0:
+            prev_screenshot = os.path.join(self.screenshots_dir, f"step_{prev_step_id}.png")
+            if os.path.exists(prev_screenshot):
+                processed_path = self.process_screenshot(prev_screenshot, step_data)
+                if processed_path:
+                    step_data["processed_screenshot"] = processed_path.replace("processed_screenshots/", "")
+        
+        # 保存当前步骤的原始截图
+        self.take_screenshot(os.path.join(self.screenshots_dir, f"step_{step_data['step_id']}"))
             
         self.actions.append(step_data)
         self._save_actions()
@@ -368,23 +529,28 @@ class AndroidEventMonitor:
             print(f"Error getting UI hierarchy: {e}")
             return None
 
+    def _setup_record_dirs(self):
+        """设置记录目录结构"""
+        if not self.record_timestamp:
+            self.record_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            
+        record_path = os.path.join(self.record_dir, f"record_{self.record_timestamp}")
+        self.screenshots_dir = os.path.join(record_path, "screenshots")
+        self.ui_trees_dir = os.path.join(record_path, "ui_trees")
+        self.processed_screenshots_dir = os.path.join(record_path, "processed_screenshots")
+        
+        # 确保所有目录存在
+        os.makedirs(self.screenshots_dir, exist_ok=True)
+        os.makedirs(self.ui_trees_dir, exist_ok=True)
+        os.makedirs(self.processed_screenshots_dir, exist_ok=True)
+
     def set_path_target(self, target):
         """设置路径目标"""
         self.path_target = target
-        # 创建新的记录
+        
+        # 创建新的记录时间戳和目录
         self.record_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.screenshots_dir = os.path.join(
-            self.record_dir,
-            f"record_{self.record_timestamp}",
-            "screenshots"
-        )
-        self.ui_trees_dir = os.path.join(
-            self.record_dir,
-            f"record_{self.record_timestamp}",
-            "ui_trees"
-        )
-        os.makedirs(self.screenshots_dir, exist_ok=True)
-        os.makedirs(self.ui_trees_dir, exist_ok=True)
+        self._setup_record_dirs()
         
         # 初始化记录
         self.actions = []
