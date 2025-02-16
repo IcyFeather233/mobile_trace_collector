@@ -5,6 +5,8 @@ from datetime import datetime
 import json
 import os
 import re
+import tkinter as tk
+from recorder_gui import RecorderGUI
 
 def print_with_timestamp(message):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
@@ -44,6 +46,10 @@ class AndroidEventMonitor:
         self.screenshots_dir = os.path.join(self.record_dir, f"record_{self.record_timestamp}", "screenshots")
         # 确保记录目录存在
         os.makedirs(self.screenshots_dir, exist_ok=True)
+
+        self.gui = None  # 添加GUI引用
+        self.path_target = None  # 添加路径目标变量
+        self.recording_enabled = False  # 添加标志控制是否记录
 
     def get_screen_resolution(self):
         """获取设备屏幕分辨率"""
@@ -252,6 +258,9 @@ class AndroidEventMonitor:
 
     def _record_step(self, step_data):
         """记录单个步骤"""
+        if not self.recording_enabled:  # 如果未启用记录，直接返回
+            return
+            
         # 等待1秒，确保页面跳转完成
         time.sleep(1)
         
@@ -261,12 +270,23 @@ class AndroidEventMonitor:
             step_data["activity_info"] = activity_info
         self.actions.append(step_data)
         self._save_actions()
+        
+        # 更新GUI显示
+        if self.gui:
+            self.gui.update_last_action(step_data)
+            self.gui.update_step_display(self.step_id)
 
     def _save_actions(self):
         """保存所有动作到JSON文件"""
+        record_data = {
+            "target": self.path_target,
+            # "timestamp": self.record_timestamp,
+            "steps": self.actions
+        }
+        
         filename = os.path.join(self.record_dir, f"record_{self.record_timestamp}", "record.json")
         with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(self.actions, f, indent=4, ensure_ascii=False)
+            json.dump(record_data, f, indent=4, ensure_ascii=False)
 
     def take_screenshot(self, filename):
         """截取屏幕"""
@@ -286,11 +306,39 @@ class AndroidEventMonitor:
         except:
             return None
 
+    def set_path_target(self, target):
+        """设置路径目标"""
+        self.path_target = target
+        # 创建新的记录
+        self.record_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.screenshots_dir = os.path.join(
+            self.record_dir,
+            f"record_{self.record_timestamp}",
+            "screenshots"
+        )
+        os.makedirs(self.screenshots_dir, exist_ok=True)
+        
+        # 初始化记录
+        self.actions = []
+        self.step_id = 0
+        self.recording_enabled = True  # 启用记录
+        self._save_actions()
+
+    def finish_current_path(self):
+        """结束当前路径记录"""
+        self.recording_enabled = False  # 禁用记录
+        self._save_actions()
+
 if __name__ == "__main__":
+    root = tk.Tk()
+    gui = RecorderGUI(root)
     monitor = AndroidEventMonitor()
+    gui.set_monitor(monitor)
+    
     try:
         monitor.start_monitoring()
-        while True:
-            time.sleep(1)
+        root.mainloop()
     except KeyboardInterrupt:
         monitor.running = False
+    finally:
+        root.destroy()
