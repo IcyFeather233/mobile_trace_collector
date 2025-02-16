@@ -1,139 +1,102 @@
-# Android操作记录程序
+# Android操作记录器
 
-这是一个记录Android设备操作的程序，能够自动捕获并记录用户的各种操作行为。
+一个用于记录Android设备操作的工具，可以记录用户的点击、滑动、输入等操作，并生成详细的操作记录。
 
-## 支持的操作类型
+## 功能特点
 
-程序可以识别并记录以下类型的操作：
+1. 图形界面操作
+   - 设置操作路径目标
+   - 实时显示当前步骤
+   - 显示上一步操作的详细信息
+   - 显示操作截图
+   - 支持删除上一步操作
+   - 支持手动结束输入操作
+   - 支持结束当前路径记录
 
-1. **点击操作 (click)**
-   - 短按屏幕（小于0.6秒）
-   - 记录点击的具体坐标
+2. 支持的操作类型
+   - 点击（Click）
+   - 长按（Press）
+   - 滑动（Swipe）
+   - 文本输入（Input）
+   - 特殊事件（Special Event，如返回键、Home键等）
 
-2. **长按操作 (press)**
-   - 按住屏幕超过0.6秒
-   - 记录长按的坐标和持续时间
+3. 自动记录信息
+   - 操作类型和详细参数
+   - 操作时的Activity信息
+   - 操作前的页面截图
+   - UI层次结构（XML格式）
+   - 点击操作的目标元素边界（Bounds）
 
-3. **滑动操作 (swipe)**
-   - 在屏幕上滑动
-   - 记录起始和结束坐标
-   - 记录滑动持续时间
+4. 可视化处理
+   - 为每个操作生成带标记的处理后截图：
+     - 点击/长按：蓝色圆点标记点击位置，红色边框标记操作元素
+     - 滑动：蓝色圆点标记起点和终点，带箭头的线条表示滑动方向
+     - 输入：在顶部显示输入的文本内容
+     - 特殊事件：在顶部显示事件类型
 
-4. **文本输入 (input)**
-   - 记录键盘输入的文字
-   - 连续的键盘输入会被合并为一个操作
-
-5. **特殊事件 (special_event)**
-   - 系统按键操作，包括：
-     - KEY_BACK（返回键）
-     - KEY_HOME（主页键）
-     - KEY_APPSELECT（任务切换键）
-     - KEY_ENTER（回车键）
-
-## 记录的数据格式
-
-每个操作都会生成一条记录，包含以下信息：
-
-1. **点击操作**
-```json
-{
-    "step_id": 1,
-    "action_type": "click",
-    "action_detail": {
-        "x": 100,
-        "y": 100
-    },
-    "activity_info": "com.example.app/com.example.app.MainActivity",
-    "screen_shot": "step_1.png"
-}
-```
-
-2. **长按操作**
-```json
-{
-    "step_id": 2,
-    "action_type": "press",
-    "action_detail": {
-        "x": 100,
-        "y": 100,
-        "duration": 1.5
-    },
-    "activity_info": "com.example.app/com.example.app.MainActivity",
-    "screen_shot": "step_2.png"
-}
-```
-
-3. **滑动操作**
-```json
-{
-    "step_id": 3,
-    "action_type": "swipe",
-    "action_detail": {
-        "start_x": 100,
-        "start_y": 100,
-        "end_x": 200,
-        "end_y": 200,
-        "duration": 0.5
-    },
-    "activity_info": "com.example.app/com.example.app.MainActivity",
-    "screen_shot": "step_3.png"
-}
-```
-
-4. **文本输入**
-```json
-{
-    "step_id": 4,
-    "action_type": "input",
-    "action_detail": {
-        "text": "KEY_H, KEY_E, KEY_L, KEY_L, KEY_O"
-    },
-    "activity_info": "com.example.app/com.example.app.MainActivity",
-    "screen_shot": "step_4.png"
-}
-```
-
-5. **特殊事件**
-```json
-{
-    "step_id": 5,
-    "action_type": "special_event",
-    "action_detail": {
-        "event": "KEY_BACK"
-    },
-    "activity_info": "com.example.app/com.example.app.MainActivity",
-    "screen_shot": "step_5.png"
-}
-```
-
-## 输出文件结构
-
-程序会在 `records` 目录下创建以时间戳命名的文件夹，结构如下：
+## 目录结构
 
 ```
 records/
-  └── record_20240216_173023/
-      ├── screenshots/
+  └── record_YYYYMMDD_HHMMSS/
+      ├── screenshots/          # 原始截图
+      │   ├── step_0.png
       │   ├── step_1.png
-      │   ├── step_2.png
       │   └── ...
-      └── record.json
+      ├── processed_screenshots/  # 处理后的截图
+      │   ├── step_1_processed.png
+      │   └── ...
+      ├── ui_trees/            # UI层次结构
+      │   ├── step_0_ui.xml
+      │   ├── step_1_ui.xml
+      │   └── ...
+      └── record.json          # 操作记录文件
 ```
 
-## 特性
+## 记录格式
 
-- 自动记录每个操作的当前Activity信息
-- 每个操作后等待1秒确保页面加载完成再截图
-- 自动合并连续的键盘输入操作
-- 使用实际的事件时间戳判断操作类型（如长按）
-- 支持设备分辨率自适应
+```json
+{
+    "target": "操作路径的目标描述",
+    "steps": [
+        {
+            "step_id": 1,
+            "action_type": "click",
+            "action_detail": {
+                "x": 100,
+                "y": 200
+            },
+            "activity_info": "com.example.app/com.example.app.MainActivity",
+            "screen_shot": "step_1.png",
+            "processed_screenshot": "step_1_processed.png",
+            "ui_tree": "step_1_ui.xml",
+            "operated_bounds": "[90,190][110,210]"
+        }
+    ]
+}
+```
 
 ## 使用方法
 
-1. 确保已连接Android设备并启用ADB
-2. 运行程序：
-   ```
-   python main.py
-   ```
-3. 程序会自动开始监听设备操作
-4. 使用Ctrl+C终止程序
+1. 启动程序
+2. 在输入框中设置操作路径的目标
+3. 开始在Android设备上进行操作
+4. 可以随时：
+   - 点击"删除上一步"删除错误的操作
+   - 点击"结束输入并记录"手动结束当前的输入操作
+   - 点击"结束当前路径"完成当前路径的记录
+5. 所有操作都会自动记录并保存
+
+## 依赖要求
+
+- Python 3.x
+- PIL (Pillow)
+- tkinter
+- ADB工具
+- 已连接的Android设备
+
+## 注意事项
+
+- 使用前请确保Android设备已通过ADB连接
+- 设备需要开启开发者选项和USB调试
+- 建议在操作期间保持设备屏幕常亮
