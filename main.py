@@ -290,8 +290,30 @@ class AndroidEventMonitor:
 
     def take_screenshot(self, filename):
         """截取屏幕"""
-        cmd = f"adb {self.device_id} exec-out screencap -p > {filename}.png"
-        subprocess.run(cmd, shell=True)
+        try:
+            # 使用临时文件名
+            temp_file = f"{filename}_temp.png"
+            # 使用 -o 参数直接输出到文件，而不是使用重定向
+            cmd = f"adb {self.device_id} exec-out screencap -p > \"{temp_file}\""
+            subprocess.run(cmd, shell=True, check=True)
+            
+            # 确保文件写入完成
+            time.sleep(0.5)
+            
+            # 如果文件存在且大小正常，则重命名为最终文件名
+            if os.path.exists(temp_file) and os.path.getsize(temp_file) > 0:
+                final_file = f"{filename}.png"
+                # 如果目标文件已存在，先删除
+                if os.path.exists(final_file):
+                    os.remove(final_file)
+                os.rename(temp_file, final_file)
+            else:
+                print(f"Screenshot failed: {temp_file} not created or empty")
+        except Exception as e:
+            print(f"Error taking screenshot: {e}")
+            # 清理可能的临时文件
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
 
     def get_current_activity(self):
         """获取当前Activity信息"""
@@ -321,8 +343,17 @@ class AndroidEventMonitor:
         # 初始化记录
         self.actions = []
         self.step_id = 0
-        self.recording_enabled = True  # 启用记录
+        
+        # 先截取初始页面
+        self.take_screenshot(os.path.join(self.screenshots_dir, "step_0"))
+        
+        # 启用记录并保存初始json
+        self.recording_enabled = True
         self._save_actions()
+        
+        # 更新GUI显示初始截图
+        if self.gui:
+            self.gui.update_initial_screenshot(os.path.join(self.screenshots_dir, "step_0.png"))
 
     def finish_current_path(self):
         """结束当前路径记录"""

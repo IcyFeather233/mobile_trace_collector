@@ -186,4 +186,13 @@ class RecorderGUI:
             
             # 禁用操作按钮
             self.delete_button.config(state='disabled')
-            self.finish_button.config(state='disabled') 
+            self.finish_button.config(state='disabled')
+
+    def update_initial_screenshot(self, image_path):
+        """更新初始页面截图"""
+        self.pending_screenshot = image_path
+        # 清空上一步操作信息
+        self.last_action_text.config(state='normal')
+        self.last_action_text.delete(1.0, tk.END)
+        self.last_action_text.insert(1.0, "初始页面")
+        self.last_action_text.config(state='disabled') 
