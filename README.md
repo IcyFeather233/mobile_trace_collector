@@ -1,63 +1,63 @@
-# Android操作记录器
+# Android Operation Recorder
 
-一个用于记录Android设备操作的工具，可以记录用户的点击、滑动、输入等操作，并生成详细的操作记录。
+A tool for recording operations on Android devices, capable of logging user clicks, swipes, inputs, and other actions while generating detailed operation records.
 
-## 功能特点
+## Features
 
-1. 图形界面操作
-   - 设置操作路径目标
-   - 实时显示当前步骤
-   - 显示上一步操作的详细信息
-   - 显示操作截图
-   - 支持删除上一步操作
-   - 支持手动结束输入操作
-   - 支持结束当前路径记录
+1. Graphical Interface Operations
+   - Set operation path target
+   - Real-time display of current step
+   - Show detailed information of previous operation
+   - Display operation screenshots
+   - Support deleting previous operation
+   - Support manual input operation ending
+   - Support ending current path recording
 
-2. 支持的操作类型
-   - 点击（Click）
-   - 长按（Press）
-   - 滑动（Swipe）
-   - 文本输入（Input）
-   - 特殊事件（Special Event，如返回键、Home键等）
+2. Supported Operation Types
+   - Click
+   - Press (Long Press)
+   - Swipe
+   - Text Input
+   - Special Events (e.g., Back key, Home key)
 
-3. 自动记录信息
-   - 操作类型和详细参数
-   - 操作时的Activity信息
-   - 操作前的页面截图
-   - UI层次结构（XML格式）
-   - 点击操作的目标元素边界（Bounds）
+3. Automatic Information Recording
+   - Operation type and detailed parameters
+   - Activity information during operation
+   - Screenshot before operation
+   - UI hierarchy (XML format)
+   - Target element bounds for click operations
 
-4. 可视化处理
-   - 为每个操作生成带标记的处理后截图：
-     - 点击/长按：蓝色圆点标记点击位置，红色边框标记操作元素
-     - 滑动：蓝色圆点标记起点和终点，带箭头的线条表示滑动方向
-     - 输入：在顶部显示输入的文本内容
-     - 特殊事件：在顶部显示事件类型
+4. Visual Processing
+   - Generates processed screenshots with markers for each operation:
+     - Click/Press: Blue dot marks click position, red border marks operated element
+     - Swipe: Blue dots mark start and end points, arrowed line shows swipe direction
+     - Input: Displays input text content at the top
+     - Special Events: Displays event type at the top
 
-## 目录结构
+## Directory Structure
 
 ```
 records/
   └── record_YYYYMMDD_HHMMSS/
-      ├── screenshots/          # 原始截图
+      ├── screenshots/          # Original screenshots
       │   ├── step_0.png
       │   ├── step_1.png
       │   └── ...
-      ├── processed_screenshots/  # 处理后的截图
+      ├── processed_screenshots/  # Processed screenshots
       │   ├── step_1_processed.png
       │   └── ...
-      ├── ui_trees/            # UI层次结构
+      ├── ui_trees/            # UI hierarchy
       │   ├── step_0_ui.xml
       │   ├── step_1_ui.xml
       │   └── ...
-      └── record.json          # 操作记录文件
+      └── record.json          # Operation record file
 ```
 
-## 记录格式
+## Record Format
 
 ```json
 {
-    "target": "操作路径的目标描述",
+    "target": "Description of operation path target",
     "steps": [
         {
             "step_id": 1,
@@ -76,27 +76,27 @@ records/
 }
 ```
 
-## 使用方法
+## Usage
 
-1. 启动程序
-2. 在输入框中设置操作路径的目标
-3. 开始在Android设备上进行操作
-4. 可以随时：
-   - 点击"删除上一步"删除错误的操作
-   - 点击"结束输入并记录"手动结束当前的输入操作
-   - 点击"结束当前路径"完成当前路径的记录
-5. 所有操作都会自动记录并保存
+1. Start the program
+2. Set the operation path target in the input field
+3. Start performing operations on the Android device
+4. At any time, you can:
+   - Click "Delete Last Step" to remove incorrect operations
+   - Click "End Input and Record" to manually end the current input operation
+   - Click "End Current Path" to complete the current path recording
+5. All operations are automatically recorded and saved
 
-## 依赖要求
+## Dependencies
 
 - Python 3.x
 - PIL (Pillow)
 - tkinter
-- ADB工具
-- 已连接的Android设备
+- ADB tools
+- Connected Android device
 
-## 注意事项
+## Notes
 
-- 使用前请确保Android设备已通过ADB连接
-- 设备需要开启开发者选项和USB调试
-- 建议在操作期间保持设备屏幕常亮
+- Ensure Android device is connected via ADB before use
+- Device must have Developer Options and USB Debugging enabled
+- Recommended to keep device screen on during operations
